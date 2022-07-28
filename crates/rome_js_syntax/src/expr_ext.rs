@@ -10,7 +10,6 @@ use crate::{JsPreUpdateExpression, JsSyntaxKind::*};
 use rome_rowan::{
     AstNode, AstSeparatedList, NodeOrToken, SyntaxNodeText, SyntaxResult, TextRange, TextSize,
 };
-use std::cmp::Ordering;
 
 impl JsAnyExpression {
     /// Returns the first non parenthesized expression.

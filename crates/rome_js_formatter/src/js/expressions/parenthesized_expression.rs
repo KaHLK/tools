@@ -29,6 +29,17 @@ impl FormatNodeRule<JsParenthesizedExpression> for FormatJsParenthesizedExpressi
 
         let expression = expression?;
 
+        if JsAnyBinaryLikeExpression::can_cast(expression.syntax().kind()) {
+            return write!(
+                f,
+                [
+                    format_removed(&l_paren_token?),
+                    expression.format(),
+                    format_removed(&r_paren_token?)
+                ]
+            );
+        }
+
         if is_simple_parenthesized_expression(node)? {
             if parenthesis_can_be_omitted {
                 write!(f, [format_removed(&l_paren_token?)])?;
@@ -164,12 +175,8 @@ fn parenthesis_can_be_omitted(node: &JsParenthesizedExpression) -> SyntaxResult<
         return Ok(false);
     }
 
-    if let Some(binary) = JsAnyBinaryLikeExpression::cast(expression.into_syntax()) {
-        if let Some(parent) = parent.and_then(JsAnyBinaryLikeExpression::cast) {
-            if !binary_needs_parens(&parent, &binary)? {
-                return Ok(true);
-            }
-        }
+    if JsAnyBinaryLikeExpression::can_cast(expression.syntax().kind()) {
+        return Ok(true);
     }
 
     Ok(false)

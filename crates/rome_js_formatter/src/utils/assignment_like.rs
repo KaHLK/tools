@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::utils::member_chain::is_member_call_chain;
 use crate::utils::object::write_member_name;
-use crate::utils::{binary_needs_parens, JsAnyBinaryLikeExpression};
+use crate::utils::JsAnyBinaryLikeExpression;
 use rome_formatter::{format_args, write, CstFormatContext, VecBuffer};
 use rome_js_syntax::{
     JsAnyAssignmentPattern, JsAnyBindingPattern, JsAnyCallArgument, JsAnyClassMemberName,

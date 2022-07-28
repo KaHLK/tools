@@ -33,14 +33,22 @@ pub trait JsSyntaxNodeExtensions {
 
     /// Gets the first parent that isn't a parenthesized expression, assignment, or type
     fn parent_skip_parens(&self) -> Option<JsSyntaxNode> {
-        self.syntax().ancestors().find(|node| {
-            !matches!(
-                node.kind(),
+        let mut current = self.syntax().parent();
+
+        while let Some(parent) = current {
+            if !matches!(
+                parent.kind(),
                 JsSyntaxKind::JS_PARENTHESIZED_EXPRESSION
                     | JsSyntaxKind::JS_PARENTHESIZED_ASSIGNMENT
                     | JsSyntaxKind::TS_PARENTHESIZED_TYPE
-            )
-        })
+            ) {
+                return Some(parent);
+            }
+
+            current = parent.parent();
+        }
+
+        None
     }
 }
 

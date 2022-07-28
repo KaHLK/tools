@@ -2,9 +2,7 @@ use crate::prelude::*;
 use crate::utils::{FormatWithSemicolon, JsAnyBinaryLikeExpression};
 
 use rome_formatter::{format_args, write};
-use rome_js_syntax::{
-    JsAnyExpression, JsReturnStatement, JsReturnStatementFields, JsSequenceExpression, JsSyntaxKind,
-};
+use rome_js_syntax::{JsReturnStatement, JsReturnStatementFields, JsSequenceExpression};
 
 #[derive(Debug, Clone, Default)]
 pub struct FormatJsReturnStatement;

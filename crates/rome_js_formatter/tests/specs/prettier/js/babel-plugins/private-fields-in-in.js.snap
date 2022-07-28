@@ -1,5 +1,6 @@
 ---
 source: crates/rome_js_formatter/tests/prettier_tests.rs
+assertion_line: 182
 expression: private-fields-in-in.js
 ---
 # Input
@@ -107,7 +108,7 @@ class C3 {
   get #getter() {}
 
   static isC(obj) {
-    return (#brand in obj) && (#method in obj) && (#getter in obj);
+    return #brand in obj && #method in obj && #getter in obj;
   }
 }
 // Invalid https://github.com/tc39/proposal-private-fields-in-in#try-statement

@@ -1,5 +1,6 @@
 ---
 source: crates/rome_js_formatter/tests/prettier_tests.rs
+assertion_line: 182
 expression: as-expression.ts
 ---
 # Input
@@ -25,15 +26,14 @@ const b = `${
   (foo + bar) as veryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryLongBaz
 }`;
 const b = `${
-  (
-    veryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryLongFoo + veryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryLongBar
-  ) as veryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryLongBaz
+  (veryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryLongFoo +
+    veryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryLongBar) as veryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryLongBaz
 }`;
 
 ```
 
 # Lines exceeding max width of 80 characters
 ```
-   13:     veryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryLongFoo + veryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryLongBar
+   13:     veryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryLongBar) as veryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryVeryLongBaz
 ```
 

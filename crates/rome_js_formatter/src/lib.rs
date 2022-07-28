@@ -702,9 +702,11 @@ mod test {
     // use this test check if your snippet prints as you wish, without using a snapshot
     fn quick_test() {
         let src = r#"
-const user = renderedUser || (
-	<div><User name={this.state.user.name} age={this.state.user.age} /></div>
+!(
+  aggregatedResults.numFailedTests === 0 &&
+  aggregatedResults.numRuntimeErrorTestSuites === 0
 );
+
         "#;
         let syntax = SourceType::tsx();
         let tree = parse(src, 0, syntax);

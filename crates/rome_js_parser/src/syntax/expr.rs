@@ -4,7 +4,6 @@
 //! See the [ECMAScript spec](https://www.ecma-international.org/ecma-262/5.1/#sec-11).
 
 use super::typescript::*;
-use super::util::*;
 use crate::event::rewrite_events;
 use crate::event::RewriteParseEvents;
 use crate::lexer::{LexContext, ReLexContext};
