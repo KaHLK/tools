@@ -1,5 +1,6 @@
 ---
 source: crates/rome_js_formatter/tests/spec_test.rs
+assertion_line: 259
 expression: binary_expression.js
 ---
 # Input
@@ -70,10 +71,10 @@ a ^ b;
 a in b;
 a instanceof b;
 
-(a + (b * c)) > 65;
-(a + (b * c)) > (65 + 5);
-2 > (65 << 5 + 3 >> 3);
-2 > (4 + (4 * 24 % 3) << 23);
+a + b * c > 65;
+a + b * c > 65 + 5;
+2 > (65 << (5 + 3)) >> 3;
+2 > (4 + ((4 * 24) % 3)) << 23;
 
 a +
 	b +

@@ -1,5 +1,6 @@
 ---
 source: crates/rome_js_formatter/tests/prettier_tests.rs
+assertion_line: 182
 expression: if.js
 ---
 # Input
@@ -21,13 +22,14 @@ if (this.hasPlugin("dynamicImports") && this.lookahead().type) {
 }
 
 if (
-  this.hasPlugin("dynamicImports") && this.lookahead().type === tt.parenLeft
+  this.hasPlugin("dynamicImports") &&
+  this.lookahead().type === tt.parenLeft
 ) {
 }
 
 if (
-  this.hasPlugin("dynamicImports") && this.lookahead().type === tt.parenLeft
-    .right
+  this.hasPlugin("dynamicImports") &&
+  this.lookahead().type === tt.parenLeft.right
 ) {
 }
 

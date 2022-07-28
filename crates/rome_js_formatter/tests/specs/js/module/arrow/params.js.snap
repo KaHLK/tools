@@ -1,6 +1,5 @@
 ---
 source: crates/rome_js_formatter/tests/spec_test.rs
-assertion_line: 257
 expression: params.js
 ---
 # Input
@@ -454,10 +453,11 @@ foo((
 foo((a = ({ a, b }) => {}) => {});
 
 foo((
-	a = 1 + f({
-		a,
+	a = 1 +
+		f({
+			a,
 
-		b,
-	}),
+			b,
+		}),
 ) => {});
 

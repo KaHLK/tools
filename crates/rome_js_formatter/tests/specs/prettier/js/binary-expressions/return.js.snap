@@ -1,5 +1,6 @@
 ---
 source: crates/rome_js_formatter/tests/prettier_tests.rs
+assertion_line: 182
 expression: return.js
 ---
 # Input
@@ -25,19 +26,20 @@ function foo3() {
 # Output
 ```js
 function foo() {
-  return this.hasPlugin("dynamicImports") && this.lookahead().type === tt
-    .parenLeft.right;
+  return (
+    this.hasPlugin("dynamicImports") &&
+    this.lookahead().type === tt.parenLeft.right
+  );
 }
 
 function foo2() {
-  return this.hasPlugin("dynamicImports") && this.lookahead().type === tt
-    .parenLeft.right ? true : false;
+  return this.hasPlugin("dynamicImports") &&
+    this.lookahead().type === tt.parenLeft.right ? true : false;
 }
 
 function foo3() {
-  return this.calculate().compute().first
-    .numberOfThings > this.calculate().compute().last
-    .numberOfThings ? true : false;
+  return this.calculate().compute().first.numberOfThings >
+    this.calculate().compute().last.numberOfThings ? true : false;
 }
 
 ```

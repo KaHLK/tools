@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::utils::{is_simple_expression, FormatPrecedence};
+use crate::utils::{binary_needs_parens, is_simple_expression, FormatPrecedence};
 use rome_formatter::write;
 
 use crate::utils::JsAnyBinaryLikeExpression;
@@ -156,34 +156,21 @@ fn parenthesis_can_be_omitted(node: &JsParenthesizedExpression) -> SyntaxResult<
             Some(JsSyntaxKind::JS_EXPRESSION_STATEMENT)
         ));
     }
+
     let parent_precedence = FormatPrecedence::with_precedence_for_parenthesis(parent.as_ref());
     let node_precedence = FormatPrecedence::with_precedence_for_parenthesis(Some(node.syntax()));
 
     if parent_precedence > node_precedence {
         return Ok(false);
     }
-    // Here we handle cases where we have binary/logical expressions.
-    // We want to remove the parenthesis only in cases where `left` and `right` are not other
-    // binary/logical expressions.
-    //
-    // From another point of view, logical/binary expressions with the same operator can stay without
-    // parenthesis.
-    match expression {
-        JsAnyExpression::JsBinaryExpression(expression) => {
-            let left = expression.left()?;
-            let right = expression.right()?;
 
-            Ok(!JsAnyBinaryLikeExpression::can_cast(left.syntax().kind())
-                && !JsAnyBinaryLikeExpression::can_cast(right.syntax().kind()))
+    if let Some(binary) = JsAnyBinaryLikeExpression::cast(expression.into_syntax()) {
+        if let Some(parent) = parent.and_then(JsAnyBinaryLikeExpression::cast) {
+            if !binary_needs_parens(&parent, &binary)? {
+                return Ok(true);
+            }
         }
-
-        JsAnyExpression::JsLogicalExpression(expression) => {
-            let left = expression.left()?;
-            let right = expression.right()?;
-
-            Ok(!JsAnyBinaryLikeExpression::can_cast(left.syntax().kind())
-                && !JsAnyBinaryLikeExpression::can_cast(right.syntax().kind()))
-        }
-        _ => Ok(false),
     }
+
+    Ok(false)
 }

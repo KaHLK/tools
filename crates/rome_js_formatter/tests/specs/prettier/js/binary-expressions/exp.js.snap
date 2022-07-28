@@ -1,5 +1,6 @@
 ---
 source: crates/rome_js_formatter/tests/prettier_tests.rs
+assertion_line: 182
 expression: exp.js
 ---
 # Input
@@ -18,7 +19,7 @@ a ** (b * c);
 
 # Output
 ```js
-a ** b ** c;
+a ** (b ** c);
 (a ** b) ** c;
 a.b ** c;
 (-a) ** b;

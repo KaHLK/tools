@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::utils::member_chain::is_member_call_chain;
 use crate::utils::object::write_member_name;
-use crate::utils::JsAnyBinaryLikeExpression;
+use crate::utils::{binary_needs_parens, JsAnyBinaryLikeExpression};
 use rome_formatter::{format_args, write, CstFormatContext, VecBuffer};
 use rome_js_syntax::{
     JsAnyAssignmentPattern, JsAnyBindingPattern, JsAnyCallArgument, JsAnyClassMemberName,
@@ -819,28 +819,29 @@ pub(crate) fn should_break_after_operator(right: &JsAnyExpression) -> SyntaxResu
     }
 
     // head is a long chain, meaning that right -> right are both assignment expressions
-    if let JsAnyExpression::JsAssignmentExpression(assignment) = right {
+    if let JsAnyExpression::JsAssignmentExpression(assignment) = &right {
         let right = assignment.right()?;
         if matches!(right, JsAnyExpression::JsAssignmentExpression(_)) {
             return Ok(true);
         }
     }
 
-    if JsAnyBinaryLikeExpression::cast(right.syntax().clone())
-        .map_or(false, |expression| !expression.should_inline())
-    {
-        return Ok(true);
+    if JsAnyBinaryLikeExpression::can_cast(right.syntax().kind()) {
+        let binary_like = JsAnyBinaryLikeExpression::unwrap_cast(right.syntax().clone());
+
+        return Ok(!binary_like.should_inline_logical_expression()?);
     }
 
-    if matches!(right, JsAnyExpression::JsSequenceExpression(_)) {
+    if matches!(&right, JsAnyExpression::JsSequenceExpression(_)) {
         return Ok(true);
     }
 
     if let JsAnyExpression::JsConditionalExpression(conditional) = &right {
-        if JsAnyBinaryLikeExpression::cast(conditional.test()?.syntax().clone())
-            .map_or(false, |expression| !expression.should_inline())
-        {
-            return Ok(true);
+        let test = conditional.test()?;
+        if JsAnyBinaryLikeExpression::can_cast(test.syntax().kind()) {
+            let binary_like = JsAnyBinaryLikeExpression::unwrap_cast(test.into_syntax());
+
+            return Ok(!binary_like.should_inline_logical_expression()?);
         }
     }
 
@@ -884,6 +885,7 @@ impl Format<JsFormatContext> for JsAnyAssignmentLike {
             // If not (for example, left is not an identifier), then let's fallback to false,
             // so we can continue the chain of checks
             let layout = self.layout(is_left_short, f)?;
+            dbg!(&layout);
 
             let left = format_once(|f| {
                 if matches!(

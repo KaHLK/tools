@@ -1,5 +1,6 @@
 use crate::prelude::*;
-use crate::utils::{format_binary_like_expression, JsAnyBinaryLikeExpression};
+use crate::utils::JsAnyBinaryLikeExpression;
+use rome_formatter::write;
 
 use rome_js_syntax::JsInstanceofExpression;
 
@@ -7,14 +8,12 @@ use rome_js_syntax::JsInstanceofExpression;
 pub struct FormatJsInstanceofExpression;
 
 impl FormatNodeRule<JsInstanceofExpression> for FormatJsInstanceofExpression {
-    fn fmt_fields(
-        &self,
-        node: &JsInstanceofExpression,
-        formatter: &mut JsFormatter,
-    ) -> FormatResult<()> {
-        format_binary_like_expression(
-            JsAnyBinaryLikeExpression::JsInstanceofExpression(node.clone()),
-            formatter,
+    fn fmt_fields(&self, node: &JsInstanceofExpression, f: &mut JsFormatter) -> FormatResult<()> {
+        write!(
+            f,
+            [JsAnyBinaryLikeExpression::JsInstanceofExpression(
+                node.clone()
+            )]
         )
     }
 }

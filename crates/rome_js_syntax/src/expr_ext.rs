@@ -4,13 +4,26 @@ use crate::{
     JsAnyExpression, JsAnyLiteralExpression, JsArrayExpression, JsArrayHole,
     JsAssignmentExpression, JsBinaryExpression, JsLiteralMemberName, JsLogicalExpression,
     JsNumberLiteralExpression, JsObjectExpression, JsRegexLiteralExpression,
-    JsStringLiteralExpression, JsSyntaxToken, JsTemplate, JsUnaryExpression, T,
+    JsStringLiteralExpression, JsSyntaxToken, JsTemplate, JsUnaryExpression, OperatorPrecedence, T,
 };
 use crate::{JsPreUpdateExpression, JsSyntaxKind::*};
 use rome_rowan::{
     AstNode, AstSeparatedList, NodeOrToken, SyntaxNodeText, SyntaxResult, TextRange, TextSize,
 };
 use std::cmp::Ordering;
+
+impl JsAnyExpression {
+    /// Returns the first non parenthesized expression.
+    pub fn skip_parens(&self) -> SyntaxResult<JsAnyExpression> {
+        let mut current = self.clone();
+
+        while let JsAnyExpression::JsParenthesizedExpression(parenthesized) = current {
+            current = parenthesized.expression()?
+        }
+
+        Ok(current)
+    }
+}
 
 impl JsLiteralMemberName {
     /// Returns the name of the member as a syntax text
@@ -128,68 +141,32 @@ pub enum JsBinaryOperator {
 }
 
 impl JsBinaryOperator {
-    pub fn is_bit_wise_operator(&self) -> bool {
-        matches!(
-            self,
-            JsBinaryOperator::LeftShift
-                | JsBinaryOperator::RightShift
-                | JsBinaryOperator::UnsignedRightShift
-                | JsBinaryOperator::BitwiseAnd
-                | JsBinaryOperator::BitwiseOr
-                | JsBinaryOperator::BitwiseXor
-        )
-    }
+    pub fn precedence(&self) -> OperatorPrecedence {
+        match self {
+            JsBinaryOperator::BitwiseOr => OperatorPrecedence::BitwiseOr,
+            JsBinaryOperator::BitwiseXor => OperatorPrecedence::BitwiseXor,
+            JsBinaryOperator::BitwiseAnd => OperatorPrecedence::BitwiseAnd,
 
-    pub fn is_plus_or_minus_operator(&self) -> bool {
-        matches!(self, JsBinaryOperator::Plus | JsBinaryOperator::Minus)
-    }
+            JsBinaryOperator::Equality
+            | JsBinaryOperator::Inequality
+            | JsBinaryOperator::StrictEquality
+            | JsBinaryOperator::StrictInequality => OperatorPrecedence::Equality,
 
-    pub fn is_times_or_div_operator(&self) -> bool {
-        matches!(
-            self,
-            JsBinaryOperator::Divide | JsBinaryOperator::Times | JsBinaryOperator::Remainder
-        )
-    }
-
-    pub fn is_exponent_operator(&self) -> bool {
-        matches!(self, JsBinaryOperator::Exponent)
-    }
-
-    pub fn is_comparison_operator(&self) -> bool {
-        matches!(
-            self,
             JsBinaryOperator::LessThan
-                | JsBinaryOperator::GreaterThan
-                | JsBinaryOperator::LessThanOrEqual
-                | JsBinaryOperator::GreaterThanOrEqual
-                | JsBinaryOperator::Equality
-                | JsBinaryOperator::StrictEquality
-                | JsBinaryOperator::Inequality
-                | JsBinaryOperator::StrictInequality
-        )
-    }
+            | JsBinaryOperator::GreaterThan
+            | JsBinaryOperator::GreaterThanOrEqual
+            | JsBinaryOperator::LessThanOrEqual => OperatorPrecedence::Relational,
 
-    // The numbers returned by this function are arbitrary, the most important thing
-    // is that, given the current implementation, they should be ordered from bigger (top) to smaller (bottom)
-    pub fn get_precedence(&self) -> u8 {
-        if self.is_bit_wise_operator() {
-            5
-        } else if self.is_times_or_div_operator() {
-            4
-        } else if self.is_plus_or_minus_operator() {
-            3
-        } else if self.is_comparison_operator() {
-            2
-        } else {
-            1
+            JsBinaryOperator::LeftShift
+            | JsBinaryOperator::RightShift
+            | JsBinaryOperator::UnsignedRightShift => OperatorPrecedence::Shift,
+
+            JsBinaryOperator::Plus | JsBinaryOperator::Minus => OperatorPrecedence::Additive,
+            JsBinaryOperator::Times | JsBinaryOperator::Divide | JsBinaryOperator::Remainder => {
+                OperatorPrecedence::Multiplicative
+            }
+            JsBinaryOperator::Exponent => OperatorPrecedence::Exponential,
         }
-    }
-
-    pub fn compare_precedence(&self, other: &Self) -> Ordering {
-        let self_precedence = self.get_precedence();
-        let other_precedence = other.get_precedence();
-
-        self_precedence.cmp(&other_precedence)
     }
 }
 
@@ -230,7 +207,7 @@ impl JsBinaryExpression {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum JsLogicalOperator {
     /// `??`
     NullishCoalescing,
@@ -238,6 +215,16 @@ pub enum JsLogicalOperator {
     LogicalOr,
     /// `&&`
     LogicalAnd,
+}
+
+impl JsLogicalOperator {
+    pub fn precedence(&self) -> OperatorPrecedence {
+        match self {
+            JsLogicalOperator::NullishCoalescing => OperatorPrecedence::Coalesce,
+            JsLogicalOperator::LogicalOr => OperatorPrecedence::LogicalOr,
+            JsLogicalOperator::LogicalAnd => OperatorPrecedence::LogicalAnd,
+        }
+    }
 }
 
 impl JsLogicalExpression {
@@ -275,6 +262,12 @@ pub enum JsUnaryOperator {
     BitwiseNot,
     /// `!`
     LogicalNot,
+}
+
+impl JsUnaryOperator {
+    pub fn precedence(&self) -> OperatorPrecedence {
+        OperatorPrecedence::Unary
+    }
 }
 
 impl JsUnaryExpression {
@@ -323,6 +316,12 @@ pub enum JsPreUpdateOperator {
     Increment,
     /// `--`
     Decrement,
+}
+
+impl JsPreUpdateOperator {
+    pub fn precedence(&self) -> OperatorPrecedence {
+        OperatorPrecedence::Update
+    }
 }
 
 impl JsPreUpdateExpression {

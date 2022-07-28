@@ -241,6 +241,8 @@
 //! If tests that are inside the `ok/` folder fail or if tests that are inside the `err/`
 //! folder don't emit, the whole test suite will fail.
 
+extern crate core;
+
 mod cst;
 mod js;
 mod jsx;
@@ -696,27 +698,26 @@ mod test {
     use rome_js_parser::parse;
     use rome_js_syntax::{SourceType, TextRange, TextSize};
 
-    #[ignore]
     #[test]
     // use this test check if your snippet prints as you wish, without using a snapshot
     fn quick_test() {
         let src = r#"
-test.expect(t => {
-	t.true(a);
-}, false);
+const user = renderedUser || (
+	<div><User name={this.state.user.name} age={this.state.user.age} /></div>
+);
         "#;
         let syntax = SourceType::tsx();
         let tree = parse(src, 0, syntax);
         let result = format_node(JsFormatContext::default(), &tree.syntax())
             .unwrap()
             .print();
-        check_reformat(CheckReformatParams {
-            root: &tree.syntax(),
-            text: result.as_code(),
-            source_type: syntax,
-            file_name: "quick_test",
-            format_context: JsFormatContext::default(),
-        });
+        // check_reformat(CheckReformatParams {
+        //     root: &tree.syntax(),
+        //     text: result.as_code(),
+        //     source_type: syntax,
+        //     file_name: "quick_test",
+        //     format_context: JsFormatContext::default(),
+        // });
         assert_eq!(
             result.as_code(),
             "type B8 = /*1*/ (C);\ntype B9 = (/*1*/ C);\ntype B10 = /*1*/ /*2*/ C;\n"
