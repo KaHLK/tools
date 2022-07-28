@@ -6,7 +6,7 @@
 //! This is a simple wrapper around the `rowan` crate which does most of the heavy lifting and is language agnostic.
 
 use crate::{JsAnyRoot, JsSyntaxKind};
-use rome_rowan::Language;
+use rome_rowan::{Language, SyntaxNode, SyntaxResult};
 #[cfg(feature = "serde")]
 use serde::Serialize;
 
@@ -26,3 +26,26 @@ pub type JsSyntaxNodeChildren = rome_rowan::SyntaxNodeChildren<JsLanguage>;
 pub type JsSyntaxElementChildren = rome_rowan::SyntaxElementChildren<JsLanguage>;
 pub type JsSyntaxList = rome_rowan::SyntaxList<JsLanguage>;
 pub type JsSyntaxTrivia = rome_rowan::syntax::SyntaxTrivia<JsLanguage>;
+
+/// Extension methods for JavaScript syntax nodes
+pub trait JsSyntaxNodeExtensions {
+    fn syntax(&self) -> &JsSyntaxNode;
+
+    /// Gets the first parent that isn't a parenthesized expression, assignment, or type
+    fn parent_skip_parens(&self) -> Option<JsSyntaxNode> {
+        self.syntax().ancestors().find(|node| {
+            !matches!(
+                node.kind(),
+                JsSyntaxKind::JS_PARENTHESIZED_EXPRESSION
+                    | JsSyntaxKind::JS_PARENTHESIZED_ASSIGNMENT
+                    | JsSyntaxKind::TS_PARENTHESIZED_TYPE
+            )
+        })
+    }
+}
+
+impl JsSyntaxNodeExtensions for JsSyntaxNode {
+    fn syntax(&self) -> &JsSyntaxNode {
+        self
+    }
+}

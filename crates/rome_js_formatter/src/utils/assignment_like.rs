@@ -633,7 +633,9 @@ impl JsAnyAssignmentLike {
         }
 
         let is_poorly_breakable = match right_expression {
-            Some(expression) => is_poorly_breakable_member_or_call_chain(expression, f)?,
+            Some(expression) => {
+                is_poorly_breakable_member_or_call_chain(expression.skip_parens()?, f)?
+            }
             None => false,
         };
 
@@ -817,6 +819,8 @@ pub(crate) fn should_break_after_operator(right: &JsAnyExpression) -> SyntaxResu
     if has_new_line_before_comment(right.syntax()) {
         return Ok(true);
     }
+
+    let right = right.skip_parens()?;
 
     // head is a long chain, meaning that right -> right are both assignment expressions
     if let JsAnyExpression::JsAssignmentExpression(assignment) = &right {

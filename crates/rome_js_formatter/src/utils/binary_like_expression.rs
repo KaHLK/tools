@@ -4,7 +4,7 @@ use rome_js_syntax::{
     JsAnyExpression, JsAnyInProperty, JsBinaryExpression, JsBinaryOperator, JsCallExpression,
     JsInExpression, JsInstanceofExpression, JsLogicalExpression, JsLogicalOperator,
     JsParenthesizedExpression, JsPrivateName, JsStaticMemberExpression, JsSyntaxKind, JsSyntaxNode,
-    JsSyntaxToken, JsUnaryExpression, OperatorPrecedence,
+    JsSyntaxNodeExtensions, JsSyntaxToken, JsUnaryExpression, OperatorPrecedence,
 };
 
 use crate::utils::should_break_after_operator;
@@ -233,8 +233,9 @@ impl Format<JsFormatContext> for JsAnyBinaryLikeExpression {
                 return write!(f, [&format_once(|f| { f.join().entries(parts).finish() })]);
             }
 
-            if let Some(parent) = self.syntax().parent() {
+            if let Some(parent) = self.syntax().parent_skip_parens() {
                 if let Some(call_expression) = JsCallExpression::cast(parent.clone()) {
+                    // TODO, doesn't work with parentheses
                     if call_expression.callee().as_ref().map(|node| node.syntax())
                         == Ok(self.syntax())
                     {
@@ -461,7 +462,7 @@ impl Format<JsFormatContext> for BinaryExpressionPart {
 
                 let syntax = binary_like_expression.syntax();
                 let parent_has_same_kind =
-                    Some(syntax.kind()) == syntax.parent().map(|node| node.kind());
+                    Some(syntax.kind()) == syntax.parent_skip_parens().map(|node| node.kind());
                 let left_has_same_kind =
                     binary_like_expression.left()?.syntax().kind() == syntax.kind();
                 let right_has_same_kind = right.syntax().kind() == syntax.kind();
@@ -558,7 +559,7 @@ impl JsAnyBinaryLikeExpression {
 
     // Break the children if the expression is inside of e.g. an if statement's condition
     fn is_inside_parenthesis(&self) -> bool {
-        if let Some(parent) = self.syntax().parent() {
+        if let Some(parent) = self.syntax().parent_skip_parens() {
             matches!(
                 parent.kind(),
                 JsSyntaxKind::JS_IF_STATEMENT
@@ -751,10 +752,10 @@ fn should_flatten(parent_operator: BinaryLikeOperator, operator: BinaryLikeOpera
 /// the indentation, then there's no need to do a second indentation.
 /// [Prettier applies]: https://github.com/prettier/prettier/blob/b0201e01ef99db799eb3716f15b7dfedb0a2e62b/src/language-js/print/binaryish.js#L122-L125
 fn should_not_indent_if_parent_indents(current_node: &JsAnyBinaryLikeExpression) -> bool {
-    match current_node.syntax().parent() {
+    match current_node.syntax().parent_skip_parens() {
         None => false,
         Some(parent) => {
-            let great_parent_kind = parent.parent().map(|node| node.kind());
+            let great_parent_kind = parent.parent_skip_parens().map(|node| node.kind());
 
             match (parent.kind(), great_parent_kind) {
                 (JsSyntaxKind::JS_PROPERTY_OBJECT_MEMBER, _)
@@ -781,7 +782,7 @@ fn should_not_indent_if_parent_indents(current_node: &JsAnyBinaryLikeExpression)
 ///
 /// This function checks what the parents adheres to this behaviour
 fn should_indent_if_parent_inlines(current_node: &JsAnyBinaryLikeExpression) -> bool {
-    fn match_parent(parent: JsSyntaxNode) -> bool {
+    if let Some(parent) = current_node.syntax().parent_skip_parens() {
         match parent.kind() {
             JsSyntaxKind::JS_ASSIGNMENT_EXPRESSION
             | JsSyntaxKind::JS_PROPERTY_CLASS_MEMBER
@@ -789,7 +790,7 @@ fn should_indent_if_parent_inlines(current_node: &JsAnyBinaryLikeExpression) -> 
             | JsSyntaxKind::JS_PROPERTY_OBJECT_MEMBER => true,
 
             JsSyntaxKind::JS_INITIALIZER_CLAUSE => {
-                if let Some(grand_parent) = parent.parent() {
+                if let Some(grand_parent) = parent.parent_skip_parens() {
                     matches!(grand_parent.kind(), JsSyntaxKind::JS_VARIABLE_DECLARATOR)
                 } else {
                     false
@@ -797,20 +798,9 @@ fn should_indent_if_parent_inlines(current_node: &JsAnyBinaryLikeExpression) -> 
             }
             _ => false,
         }
+    } else {
+        false
     }
-
-    let mut current = current_node.syntax().clone();
-
-    // FIXME is the while loop necessary here?
-    while let Some(parent) = current.parent() {
-        if JsParenthesizedExpression::can_cast(parent.kind()) {
-            current = parent
-        } else {
-            return match_parent(parent);
-        }
-    }
-
-    false
 }
 
 /// The [PostorderIterator] visits every node twice. First on the way down to find the left most binary

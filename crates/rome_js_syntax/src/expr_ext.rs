@@ -18,7 +18,7 @@ impl JsAnyExpression {
         let mut current = self.clone();
 
         while let JsAnyExpression::JsParenthesizedExpression(parenthesized) = current {
-            current = parenthesized.expression()?
+            current = parenthesized.expression()?;
         }
 
         Ok(current)
