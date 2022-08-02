@@ -23,6 +23,8 @@ use tower_lsp::jsonrpc;
 use tower_lsp::jsonrpc::Response;
 use tower_lsp::lsp_types::ClientCapabilities;
 use tower_lsp::lsp_types::CodeActionContext;
+use tower_lsp::lsp_types::CodeActionKind;
+use tower_lsp::lsp_types::CodeActionOrCommand;
 use tower_lsp::lsp_types::CodeActionParams;
 use tower_lsp::lsp_types::CodeActionResponse;
 use tower_lsp::lsp_types::DidCloseTextDocumentParams;
@@ -270,7 +272,7 @@ async fn document_lifecycle() -> Result<()> {
 }
 
 #[tokio::test]
-async fn pull_code_actions() -> Result<()> {
+async fn pull_quick_fixes() -> Result<()> {
     let (service, client) = build_server();
     let (stream, sink) = client.split();
     let mut server = Server::new(service);
@@ -280,7 +282,7 @@ async fn pull_code_actions() -> Result<()> {
     server.initialize().await?;
     server.initialized().await?;
 
-    server.open_document("for(;a == b;);").await?;
+    server.open_document("if(a == b) {}").await?;
 
     let res: CodeActionResponse = server
         .request(
@@ -293,16 +295,16 @@ async fn pull_code_actions() -> Result<()> {
                 range: Range {
                     start: Position {
                         line: 0,
-                        character: 8,
+                        character: 6,
                     },
                     end: Position {
                         line: 0,
-                        character: 8,
+                        character: 6,
                     },
                 },
                 context: CodeActionContext {
                     diagnostics: vec![],
-                    only: None,
+                    only: Some(vec![CodeActionKind::QUICKFIX]),
                 },
                 work_done_progress_params: WorkDoneProgressParams {
                     work_done_token: None,
@@ -315,7 +317,81 @@ async fn pull_code_actions() -> Result<()> {
         .await?
         .context("codeAction returned None")?;
 
-    assert!(!res.is_empty());
+    let code_actions: Vec<_> = res
+        .iter()
+        .map(|action| match action {
+            CodeActionOrCommand::Command(_) => panic!("unexpected command"),
+            CodeActionOrCommand::CodeAction(action) => &action.title,
+        })
+        .collect();
+
+    assert_eq!(code_actions.as_slice(), &["Use ==="]);
+
+    server.close_document().await?;
+
+    server.shutdown().await?;
+    reader.abort();
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn pull_refactors() -> Result<()> {
+    let (service, client) = build_server();
+    let (stream, sink) = client.split();
+    let mut server = Server::new(service);
+
+    let reader = tokio::spawn(client_handler(stream, sink));
+
+    server.initialize().await?;
+    server.initialized().await?;
+
+    server
+        .open_document("let variable = \"value\"; func(variable);")
+        .await?;
+
+    let res: CodeActionResponse = server
+        .request(
+            "textDocument/codeAction",
+            "pull_code_actions",
+            CodeActionParams {
+                text_document: TextDocumentIdentifier {
+                    uri: Url::parse("test://workspace/document.js")?,
+                },
+                range: Range {
+                    start: Position {
+                        line: 0,
+                        character: 7,
+                    },
+                    end: Position {
+                        line: 0,
+                        character: 7,
+                    },
+                },
+                context: CodeActionContext {
+                    diagnostics: vec![],
+                    only: Some(vec![CodeActionKind::REFACTOR]),
+                },
+                work_done_progress_params: WorkDoneProgressParams {
+                    work_done_token: None,
+                },
+                partial_result_params: PartialResultParams {
+                    partial_result_token: None,
+                },
+            },
+        )
+        .await?
+        .context("codeAction returned None")?;
+
+    let code_actions: Vec<_> = res
+        .iter()
+        .map(|action| match action {
+            CodeActionOrCommand::Command(_) => panic!("unexpected command"),
+            CodeActionOrCommand::CodeAction(action) => &action.title,
+        })
+        .collect();
+
+    assert_eq!(code_actions.as_slice(), &["Inline variable"]);
 
     server.close_document().await?;
 
