@@ -20,5 +20,5 @@ Quote style: Double Quotes
 -----
 let x = <const>"hello";
 let y = <string>x;
-var d = <Error>({ name: "foo", message: "bar" });
+var d = <Error>{ name: "foo", message: "bar" };
 

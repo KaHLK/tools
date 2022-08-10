@@ -1,8 +1,9 @@
 use crate::prelude::*;
 use rome_formatter::write;
 
-use rome_js_syntax::JsTemplate;
+use crate::parentheses::NeedsParentheses;
 use rome_js_syntax::JsTemplateFields;
+use rome_js_syntax::{JsSyntaxNode, JsTemplate};
 
 #[derive(Debug, Clone, Default)]
 pub struct FormatJsTemplate;
@@ -28,5 +29,20 @@ impl FormatNodeRule<JsTemplate> for FormatJsTemplate {
                 r_tick_token.format()
             ]
         ]
+    }
+
+    fn needs_parentheses(&self, item: &JsTemplate) -> bool {
+        item.needs_parentheses()
+    }
+}
+
+/// `TemplateLiteral`'s are `PrimaryExpression's that never need parentheses.
+impl NeedsParentheses for JsTemplate {
+    fn needs_parentheses(&self) -> bool {
+        false
+    }
+
+    fn needs_parentheses_with_parent(&self, _parent: &JsSyntaxNode) -> bool {
+        false
     }
 }

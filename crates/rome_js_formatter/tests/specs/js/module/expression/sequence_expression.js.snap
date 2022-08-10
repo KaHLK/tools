@@ -47,25 +47,21 @@ Quote style: Double Quotes
 -----
 a, b;
 
-const f = () => (
-	____________first,
+const f = () => (____________first,
+____________second,
+____________third,
+____________third,
+____________third,
+____________third,
+____________third);
+
+____________first,
 	____________second,
 	____________third,
 	____________third,
 	____________third,
 	____________third,
-	____________third
-);
-
-(
-	____________first,
-		____________second,
-		____________third,
-		____________third,
-		____________third,
-		____________third,
-		____________third
-);
+	____________third;
 
 function a() {
 	return (
@@ -80,15 +76,14 @@ function a() {
 }
 
 const object = {
-	something: (
-		____________first,
+	something:
+		(____________first,
 		____________second,
 		____________third,
 		____________third,
 		____________third,
 		____________third,
-		____________third
-	),
+		____________third),
 };
 
 a,
