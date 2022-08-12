@@ -19,11 +19,11 @@ pub(crate) use crate::parentheses::resolve_left_most_expression;
 use crate::prelude::*;
 pub(crate) use assignment_like::{should_break_after_operator, JsAnyAssignmentLike};
 pub(crate) use binary_like_expression::{
-    binary_argument_needs_parens, format_binary_like_expression, JsAnyBinaryLikeExpression,
-    JsAnyBinaryLikeLeftExpression,
+    binary_argument_needs_parens, format_binary_like_expression, needs_binary_like_parentheses,
+    JsAnyBinaryLikeExpression, JsAnyBinaryLikeLeftExpression,
 };
 pub(crate) use conditional::{resolve_expression, resolve_expression_syntax, JsAnyConditional};
-pub(crate) use member_chain::get_member_chain;
+pub(crate) use member_chain::{get_member_chain, MemberChainLabel};
 pub(crate) use object_like::JsObjectLike;
 pub(crate) use object_pattern_like::JsObjectPatternLike;
 use rome_formatter::{format_args, normalize_newlines, write, Buffer, VecBuffer};
@@ -34,7 +34,6 @@ use rome_js_syntax::{
 use rome_js_syntax::{JsSyntaxKind, JsSyntaxNode, JsSyntaxToken};
 use rome_rowan::{AstNode, AstNodeList, Direction, SyntaxResult};
 pub(crate) use simple::*;
-use std::fmt::Debug;
 pub(crate) use string_utils::*;
 pub(crate) use typescript::should_hug_type;
 

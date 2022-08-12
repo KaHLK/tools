@@ -69,6 +69,7 @@ mod tests {
         );
         assert_needs_parentheses!("new (test()![member])()", JsComputedMemberExpression);
 
+        assert_needs_parentheses!("new (a?.b[c])()", JsComputedMemberExpression);
         assert_not_needs_parentheses!("new (test[a])()", JsComputedMemberExpression);
     }
 }

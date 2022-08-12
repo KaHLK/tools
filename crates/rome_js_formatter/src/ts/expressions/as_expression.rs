@@ -1,8 +1,10 @@
 use crate::prelude::*;
 
 use crate::parentheses::{
-    is_binary_like_left_or_right, is_callee, is_member_object, is_spread, is_tag, NeedsParentheses,
+    is_binary_like_left_or_right, is_callee, is_member_object, resolve_expression_parent,
+    NeedsParentheses,
 };
+use crate::ts::expressions::type_assertion_expression::type_cast_like_needs_parens;
 use rome_formatter::write;
 use rome_js_syntax::TsAsExpressionFields;
 use rome_js_syntax::{JsSyntaxKind, JsSyntaxNode, TsAsExpression};
@@ -18,16 +20,30 @@ impl FormatNodeRule<TsAsExpression> for FormatTsAsExpression {
             expression,
         } = node.as_fields();
 
-        write![
-            f,
-            [
-                expression.format(),
-                space(),
-                as_token.format(),
-                space(),
-                ty.format(),
+        let format_inner = format_with(|f| {
+            write![
+                f,
+                [
+                    expression.format(),
+                    space(),
+                    as_token.format(),
+                    space(),
+                    ty.format(),
+                ]
             ]
-        ]
+        });
+
+        let parent = resolve_expression_parent(node.syntax());
+
+        let is_callee_or_object = parent.map_or(false, |parent| {
+            is_callee(node.syntax(), &parent) || is_member_object(node.syntax(), &parent)
+        });
+
+        if is_callee_or_object {
+            write!(f, [group(&soft_block_indent(&format_inner))])
+        } else {
+            write!(f, [format_inner])
+        }
     }
 
     fn needs_parentheses(&self, item: &TsAsExpression) -> bool {
@@ -38,18 +54,10 @@ impl FormatNodeRule<TsAsExpression> for FormatTsAsExpression {
 impl NeedsParentheses for TsAsExpression {
     fn needs_parentheses_with_parent(&self, parent: &JsSyntaxNode) -> bool {
         match parent.kind() {
-            JsSyntaxKind::JS_CONDITIONAL_EXPRESSION
-            | JsSyntaxKind::JS_EXTENDS_CLAUSE
-            | JsSyntaxKind::TS_TYPE_ASSERTION_EXPRESSION
-            | JsSyntaxKind::JS_UNARY_EXPRESSION
-            | JsSyntaxKind::JS_AWAIT_EXPRESSION
-            | JsSyntaxKind::TS_NON_NULL_ASSERTION_EXPRESSION => true,
+            JsSyntaxKind::JS_CONDITIONAL_EXPRESSION => true,
 
             _ => {
-                is_callee(self.syntax(), parent)
-                    || is_tag(self.syntax(), parent)
-                    || is_spread(self.syntax(), parent)
-                    || is_member_object(self.syntax(), parent)
+                type_cast_like_needs_parens(self.syntax(), parent)
                     || is_binary_like_left_or_right(self.syntax(), parent)
             }
         }

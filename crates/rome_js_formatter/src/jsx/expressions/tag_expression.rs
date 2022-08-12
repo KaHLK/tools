@@ -53,28 +53,5 @@ impl NeedsParentheses for JsxTagExpression {
             | JsSyntaxKind::JSX_SPREAD_CHILD => true,
             _ => is_callee(self.syntax(), parent) || is_tag(self.syntax(), parent),
         }
-
-        //         (parent.type !== "ArrayExpression" &&
-        //           parent.type !== "ArrowFunctionExpression" &&
-        //           parent.type !== "AssignmentExpression" &&
-        //           parent.type !== "AssignmentPattern" &&
-        //           parent.type !== "BinaryExpression" &&
-        //           parent.type !== "NewExpression" &&
-        //           parent.type !== "ConditionalExpression" &&
-        //           parent.type !== "ExpressionStatement" &&
-        //           parent.type !== "JsExpressionRoot" &&
-        //           parent.type !== "JSXAttribute" &&
-        //           parent.type !== "JSXElement" &&
-        //           parent.type !== "JSXExpressionContainer" &&
-        //           parent.type !== "JSXFragment" &&
-        //           parent.type !== "LogicalExpression" &&
-        //           !isCallExpression(parent) &&
-        //           !isObjectProperty(parent) &&
-        //           parent.type !== "ReturnStatement" &&
-        //           parent.type !== "ThrowStatement" &&
-        //           parent.type !== "TypeCastExpression" &&
-        //           parent.type !== "VariableDeclarator" &&
-        //           parent.type !== "YieldExpression")
-        //       );
     }
 }

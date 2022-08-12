@@ -21,11 +21,7 @@ impl FormatNodeRule<JsCallExpression> for FormatJsCallExpression {
 
 impl NeedsParentheses for JsCallExpression {
     fn needs_parentheses_with_parent(&self, parent: &JsSyntaxNode) -> bool {
-        match parent.kind() {
-            JsSyntaxKind::JS_NEW_EXPRESSION => true,
-
-            _ => false,
-        }
+        matches!(parent.kind(), JsSyntaxKind::JS_NEW_EXPRESSION)
     }
 }
 

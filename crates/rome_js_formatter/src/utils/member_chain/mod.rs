@@ -16,7 +16,7 @@
 ///!   .catch()
 ///! ```
 ///!
-///! In order to achieve that we use the same heuristic that [Prettier applies].
+///! In order to achieve that we use the same heuristic that [Prettier applies](https://github.com/prettier/prettier/blob/main/src/language-js/print/member-chain.js).
 ///!
 ///! The process is the following:
 ///!
@@ -102,8 +102,6 @@
 ///!     [StaticMemberExpression],
 ///! ]
 ///! ```
-///!
-///! [Prettier applies]: https://github.com/prettier/prettier/blob/main/src/language-js/print/member-chain.js
 mod chain_member;
 mod groups;
 mod simple_argument;
@@ -118,6 +116,8 @@ use crate::utils::member_chain::simple_argument::SimpleArgument;
 use rome_formatter::{format_args, write, Buffer, Comments, CstFormatContext, PreambleBuffer};
 use rome_js_syntax::{JsAnyExpression, JsCallExpression, JsExpressionStatement, JsLanguage};
 use rome_rowan::{AstNode, SyntaxResult};
+
+pub(crate) enum MemberChainLabel {}
 
 #[derive(Debug, Clone)]
 pub(crate) struct MemberChain {

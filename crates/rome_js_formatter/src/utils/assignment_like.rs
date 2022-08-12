@@ -1,4 +1,4 @@
-use crate::parentheses::get_expression_left_side;
+use crate::parentheses::{get_expression_left_side, resolve_expression_parent};
 use crate::prelude::*;
 use crate::utils::member_chain::is_member_call_chain;
 use crate::utils::object::write_member_name;
@@ -586,12 +586,11 @@ impl JsAnyAssignmentLike {
                 return Ok(AssignmentLikeLayout::SuppressedInitializer);
             }
         }
+        let right_expression = right.as_expression().map(resolve_expression);
 
-        if let Some(layout) = self.chain_formatting_layout(&right)? {
+        if let Some(layout) = self.chain_formatting_layout(right_expression.as_ref())? {
             return Ok(layout);
         }
-
-        let right_expression = right.as_expression().map(resolve_expression);
 
         if let Some(JsAnyExpression::JsCallExpression(call_expression)) = &right_expression {
             if call_expression.callee()?.syntax().text() == "require" {
@@ -680,11 +679,11 @@ impl JsAnyAssignmentLike {
     /// and if so, it return the layout type
     fn chain_formatting_layout(
         &self,
-        right: &RightAssignmentLike,
+        right_expression: Option<&JsAnyExpression>,
     ) -> SyntaxResult<Option<AssignmentLikeLayout>> {
         let right_is_tail = !matches!(
-            right,
-            RightAssignmentLike::JsAnyExpression(JsAnyExpression::JsAssignmentExpression(_))
+            right_expression,
+            Some(JsAnyExpression::JsAssignmentExpression(_))
         );
 
         // The chain goes up two levels, by checking up to the great parent if all the conditions
@@ -692,14 +691,14 @@ impl JsAnyAssignmentLike {
         let upper_chain_is_eligible =
             // First, we check if the current node is an assignment expression
             if let JsAnyAssignmentLike::JsAssignmentExpression(assignment) = self {
-                assignment.syntax().parent().map_or(false, |parent| {
+                resolve_expression_parent(assignment.syntax()).map_or(false, |parent| {
                     // Then we check if the parent is assignment expression or variable declarator
                     if matches!(
                         parent.kind(),
                         JsSyntaxKind::JS_ASSIGNMENT_EXPRESSION
-                            | JsSyntaxKind::JS_VARIABLE_DECLARATOR
+                            | JsSyntaxKind::JS_INITIALIZER_CLAUSE
                     ) {
-                        let great_parent_kind = parent.parent().map(|n| n.kind());
+                        let great_parent_kind = resolve_expression_parent(&parent).map(|n| n.kind());
                         // Finally, we check the great parent.
                         // The great parent triggers the eligibility when
                         // - the current node that we were inspecting is not a "tail"
@@ -724,20 +723,21 @@ impl JsAnyAssignmentLike {
             if !right_is_tail {
                 Some(AssignmentLikeLayout::Chain)
             } else {
-                match right {
-                    RightAssignmentLike::JsAnyExpression(
-                        JsAnyExpression::JsArrowFunctionExpression(arrow),
-                    ) => {
+                match right_expression {
+                    Some(JsAnyExpression::JsArrowFunctionExpression(arrow)) => {
                         let this_body = arrow.body()?;
-                        if matches!(
-                            this_body,
-                            JsAnyFunctionBody::JsAnyExpression(
-                                JsAnyExpression::JsArrowFunctionExpression(_)
-                            )
-                        ) {
-                            Some(AssignmentLikeLayout::ChainTailArrowFunction)
-                        } else {
-                            Some(AssignmentLikeLayout::ChainTail)
+                        match this_body {
+                            JsAnyFunctionBody::JsAnyExpression(expression) => {
+                                if matches!(
+                                    resolve_expression(expression),
+                                    JsAnyExpression::JsArrowFunctionExpression(_)
+                                ) {
+                                    Some(AssignmentLikeLayout::ChainTailArrowFunction)
+                                } else {
+                                    Some(AssignmentLikeLayout::ChainTail)
+                                }
+                            }
+                            _ => Some(AssignmentLikeLayout::ChainTail),
                         }
                     }
 
@@ -807,7 +807,7 @@ impl JsAnyAssignmentLike {
         let result = if let Some(expression) = right.as_expression() {
             should_break_after_operator(&expression)?
         } else {
-            has_new_line_before_comment(right.syntax())
+            has_leading_own_line_comment(right.syntax())
         };
 
         Ok(result)
@@ -820,7 +820,7 @@ pub(crate) fn should_break_after_operator(right: &JsAnyExpression) -> SyntaxResu
     // that causes a line break.
     let mut current: JsAnyBinaryLikeLeftExpression = right.clone().into();
     loop {
-        if has_new_line_before_comment(current.syntax()) {
+        if has_leading_own_line_comment(current.syntax()) {
             return Ok(true);
         }
 
@@ -839,7 +839,7 @@ pub(crate) fn should_break_after_operator(right: &JsAnyExpression) -> SyntaxResu
         // head is a long chain, meaning that right -> right are both assignment expressions
         JsAnyExpression::JsAssignmentExpression(assignment) => {
             matches!(
-                assignment.right()?,
+                resolve_expression(assignment.right()?),
                 JsAnyExpression::JsAssignmentExpression(_)
             )
         }
@@ -861,8 +861,8 @@ pub(crate) fn should_break_after_operator(right: &JsAnyExpression) -> SyntaxResu
 
     Ok(result)
 }
-/// If checks if among leading trivias, if there's a sequence of [Newline, Comment]
-pub(crate) fn has_new_line_before_comment(node: &JsSyntaxNode) -> bool {
+/// Tests if the node has any leading comment that will be placed on its own line.
+pub(crate) fn has_leading_own_line_comment(node: &JsSyntaxNode) -> bool {
     if let Some(leading_trivia) = node.first_leading_trivia() {
         let mut first_comment = true;
         let mut after_comment = false;
@@ -1045,24 +1045,29 @@ fn is_poorly_breakable_member_or_call_chain(
     let mut expression = Some(expression.clone());
 
     while let Some(node) = expression.take() {
-        match node {
+        expression = match node {
             JsAnyExpression::JsCallExpression(call_expression) => {
                 is_chain = true;
-                expression = Some(call_expression.callee()?);
+                let callee = call_expression.callee()?;
                 call_expressions.push(call_expression);
+                Some(callee)
             }
             JsAnyExpression::JsStaticMemberExpression(node) => {
                 is_chain = true;
-                expression = Some(node.object()?);
+                Some(node.object()?)
             }
             JsAnyExpression::JsComputedMemberExpression(node) => {
                 is_chain = true;
-                expression = Some(node.object()?);
+                Some(node.object()?)
             }
+            JsAnyExpression::JsParenthesizedExpression(node) => Some(node.expression()?),
             JsAnyExpression::JsIdentifierExpression(_) | JsAnyExpression::JsThisExpression(_) => {
                 is_chain_head_simple = true;
+                break;
             }
-            _ => {}
+            _ => {
+                break;
+            }
         }
     }
 
@@ -1113,7 +1118,7 @@ fn is_short_argument(argument: JsAnyCallArgument, threshold: u16) -> SyntaxResul
     }
 
     if let JsAnyCallArgument::JsAnyExpression(expression) = argument {
-        let is_short_argument = match expression {
+        let is_short_argument = match resolve_expression(expression) {
             JsAnyExpression::JsThisExpression(_) => true,
             JsAnyExpression::JsIdentifierExpression(identifier) => {
                 identifier.name()?.value_token()?.text_trimmed().len() <= threshold as usize

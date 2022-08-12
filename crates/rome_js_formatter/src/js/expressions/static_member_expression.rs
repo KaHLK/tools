@@ -1,15 +1,33 @@
 use crate::prelude::*;
 
-use crate::parentheses::NeedsParentheses;
+use crate::parentheses::{resolve_expression_parent, NeedsParentheses};
+use crate::utils::{resolve_expression, MemberChainLabel};
 use rome_formatter::{format_args, write};
 use rome_js_syntax::{
-    JsAnyExpression, JsAssignmentExpression, JsStaticMemberExpression,
-    JsStaticMemberExpressionFields, JsSyntaxKind, JsSyntaxNode, JsVariableDeclarator,
+    JsAnyExpression, JsAssignmentExpression, JsInitializerClause, JsStaticMemberExpression,
+    JsStaticMemberExpressionFields, JsSyntaxKind, JsSyntaxNode,
 };
 use rome_rowan::AstNode;
 
 #[derive(Debug, Clone, Default)]
 pub struct FormatJsStaticMemberExpression;
+
+struct MemberLabel;
+
+#[derive(Copy, Clone, Debug)]
+enum Label {
+    Member,
+    MemberChain,
+}
+
+impl Label {
+    fn label_id(&self) -> LabelId {
+        match self {
+            Label::Member => LabelId::of::<MemberLabel>(),
+            Label::MemberChain => LabelId::of::<MemberChainLabel>(),
+        }
+    }
+}
 
 impl FormatNodeRule<JsStaticMemberExpression> for FormatJsStaticMemberExpression {
     fn fmt_fields(&self, node: &JsStaticMemberExpression, f: &mut JsFormatter) -> FormatResult<()> {
@@ -19,11 +37,24 @@ impl FormatNodeRule<JsStaticMemberExpression> for FormatJsStaticMemberExpression
             member,
         } = node.as_fields();
 
-        write!(f, [object.format()])?;
+        let mut object_label: Option<Label> = None;
+        {
+            let mut buffer = f.inspect(|element| {
+                object_label = if element.has_label(LabelId::of::<MemberLabel>()) {
+                    Some(Label::Member)
+                } else if element.has_label(LabelId::of::<MemberChainLabel>()) {
+                    Some(Label::MemberChain)
+                } else {
+                    None
+                };
+            });
 
-        let layout = compute_member_layout(node)?;
+            write!(buffer, [object.format()])?;
+        }
 
-        match layout {
+        let layout = compute_member_layout(node, object_label)?;
+
+        let format_inner = format_with(|f| match layout {
             StaticMemberExpressionLayout::NoBreak => {
                 write!(f, [operator_token.format(), member.format()])
             }
@@ -37,7 +68,14 @@ impl FormatNodeRule<JsStaticMemberExpression> for FormatJsStaticMemberExpression
                     ]))]
                 )
             }
-        }
+        });
+
+        let label = match object_label {
+            Some(Label::MemberChain) => Label::MemberChain,
+            _ => Label::Member,
+        };
+
+        write!(f, [labelled(label.label_id(), &format_inner)])
     }
 
     fn needs_parentheses(&self, item: &JsStaticMemberExpression) -> bool {
@@ -45,6 +83,7 @@ impl FormatNodeRule<JsStaticMemberExpression> for FormatJsStaticMemberExpression
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 enum StaticMemberExpressionLayout {
     /// Forces that there's no line break between the object, operator, and member
     NoBreak,
@@ -55,30 +94,33 @@ enum StaticMemberExpressionLayout {
 
 fn compute_member_layout(
     member: &JsStaticMemberExpression,
+    object_label: Option<Label>,
 ) -> FormatResult<StaticMemberExpressionLayout> {
-    let parent = member.syntax().parent();
+    let parent = resolve_expression_parent(member.syntax());
 
     let nested = parent
         .as_ref()
         .map_or(false, |p| JsStaticMemberExpression::can_cast(p.kind()));
 
+    let object = resolve_expression(member.object()?);
+
     if let Some(parent) = &parent {
         if JsAssignmentExpression::can_cast(parent.kind())
-            || JsVariableDeclarator::can_cast(parent.kind())
+            || JsInitializerClause::can_cast(parent.kind())
         {
-            let no_break = match member.object()? {
+            let no_break = match &object {
                 JsAnyExpression::JsCallExpression(call_expression) => {
                     !call_expression.arguments()?.args().is_empty()
                 }
                 JsAnyExpression::TsNonNullAssertionExpression(non_null_assertion) => {
-                    match non_null_assertion.expression()? {
+                    match resolve_expression(non_null_assertion.expression()?) {
                         JsAnyExpression::JsCallExpression(call_expression) => {
                             !call_expression.arguments()?.args().is_empty()
                         }
                         _ => false,
                     }
                 }
-                _ => false,
+                _ => matches!(object_label, Some(Label::MemberChain)),
             };
 
             if no_break {
@@ -87,14 +129,16 @@ fn compute_member_layout(
         }
     };
 
-    if !nested && matches!(member.object()?, JsAnyExpression::JsIdentifierExpression(_)) {
+    if !nested && matches!(object, JsAnyExpression::JsIdentifierExpression(_)) {
         return Ok(StaticMemberExpressionLayout::NoBreak);
     }
 
-    let first_non_static_member_ancestor = member
-        .syntax()
-        .ancestors()
-        .find(|parent| !JsStaticMemberExpression::can_cast(parent.kind()));
+    let first_non_static_member_ancestor = member.syntax().ancestors().find(|parent| {
+        !matches!(
+            parent.kind(),
+            JsSyntaxKind::JS_STATIC_MEMBER_EXPRESSION | JsSyntaxKind::JS_PARENTHESIZED_EXPRESSION
+        )
+    });
 
     if matches!(
         first_non_static_member_ancestor.and_then(JsAnyExpression::cast),
@@ -131,6 +175,7 @@ pub(crate) fn member_chain_callee_needs_parens(
                     JsComputedMemberExpression(member) => member.object().ok(),
                     JsTemplate(template) => template.tag(),
                     TsNonNullAssertionExpression(assertion) => assertion.expression().ok(),
+                    JsParenthesizedExpression(expression) => expression.expression().ok(),
                     _ => None,
                 });
 

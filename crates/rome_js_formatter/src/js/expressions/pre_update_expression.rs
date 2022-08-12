@@ -1,4 +1,4 @@
-use crate::parentheses::{update_expression_needs_parentheses, NeedsParentheses};
+use crate::parentheses::{unary_like_expression_needs_parentheses, NeedsParentheses};
 use crate::prelude::*;
 
 use rome_formatter::write;
@@ -38,7 +38,7 @@ impl NeedsParentheses for JsPreUpdateExpression {
                     || (parent_operator == Ok(JsUnaryOperator::Minus)
                         && operator == Ok(JsPreUpdateOperator::Decrement))
             }
-            _ => update_expression_needs_parentheses(parent, self.syntax()),
+            _ => unary_like_expression_needs_parentheses(self.syntax(), parent),
         }
     }
 }

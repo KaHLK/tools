@@ -2,8 +2,8 @@ use crate::prelude::*;
 use rome_formatter::{format_args, write};
 
 use crate::parentheses::{
-    is_binary_like_left_or_right, is_conditional_test, is_in_left_hand_side_position,
-    NeedsParentheses,
+    is_binary_like_left_or_right, is_conditional_test,
+    update_or_lower_expression_needs_parentheses, NeedsParentheses,
 };
 use crate::utils::{
     resolve_expression, resolve_left_most_expression, JsAnyBinaryLikeLeftExpression,
@@ -105,14 +105,6 @@ impl FormatNodeRule<JsArrowFunctionExpression> for FormatJsArrowFunctionExpressi
                             ])
                         ])]
                     );
-                    //   // We handle sequence expressions as the body of arrows specially,
-                    //   // so that the required parentheses end up on their own lines.
-                    //   if (node.body.type === "SequenceExpression") {
-                    //     return group([
-                    //       ...parts,
-                    //       group([" (", indent([softline, body]), softline, ")"]),
-                    //     ]);
-                    //   }
                 }
                 _ => false,
             },
@@ -178,7 +170,7 @@ impl NeedsParentheses for JsArrowFunctionExpression {
 
             _ => {
                 is_conditional_test(self.syntax(), parent)
-                    || is_in_left_hand_side_position(self.syntax(), parent)
+                    || update_or_lower_expression_needs_parentheses(self.syntax(), parent)
                     || is_binary_like_left_or_right(self.syntax(), parent)
             }
         }

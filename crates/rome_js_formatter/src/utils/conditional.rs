@@ -490,7 +490,7 @@ impl JsAnyConditional {
 
                     // Skip over new expressions
                     if new_expression.callee().map(resolve_expression).as_ref() == Ok(&expression) {
-                        parent = new_expression.syntax().parent();
+                        parent = resolve_expression_parent(new_expression.syntax());
                         expression = new_expression.into();
                         break;
                     }
@@ -503,7 +503,7 @@ impl JsAnyConditional {
                     if as_expression.expression().map(resolve_expression).as_ref()
                         == Ok(&expression)
                     {
-                        parent = as_expression.syntax().parent();
+                        parent = resolve_expression_parent(as_expression.syntax());
                         expression = as_expression.into();
                         break;
                     }

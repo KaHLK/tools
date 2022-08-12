@@ -28,6 +28,10 @@ impl FormatNodeRule<JsArrayExpression> for FormatJsArrayExpression {
             ]
         )
     }
+
+    fn needs_parentheses(&self, item: &JsArrayExpression) -> bool {
+        item.needs_parentheses()
+    }
 }
 
 impl NeedsParentheses for JsArrayExpression {

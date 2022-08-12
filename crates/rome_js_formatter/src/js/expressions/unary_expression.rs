@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use rome_formatter::write;
 
-use crate::parentheses::{update_expression_needs_parentheses, NeedsParentheses};
+use crate::parentheses::{unary_like_expression_needs_parentheses, NeedsParentheses};
 
 use rome_js_syntax::JsSyntaxNode;
 use rome_js_syntax::{JsSyntaxKind, JsUnaryExpression};
@@ -51,7 +51,7 @@ impl NeedsParentheses for JsUnaryExpression {
                 matches!(operator, Ok(JsUnaryOperator::Plus | JsUnaryOperator::Minus))
                     && parent_operator == operator
             }
-            _ => update_expression_needs_parentheses(parent, self.syntax()),
+            _ => unary_like_expression_needs_parentheses(self.syntax(), parent),
         }
     }
 }
