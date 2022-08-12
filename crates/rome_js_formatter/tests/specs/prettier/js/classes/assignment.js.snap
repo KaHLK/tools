@@ -44,14 +44,17 @@ module.exports = class A extends B {
 ```diff
 --- Prettier
 +++ Rome
-@@ -1,4 +1,5 @@
+@@ -1,6 +1,6 @@
 -aaaaaaaa.bbbbbbbb.cccccccc.dddddddd.eeeeeeee.ffffffff.gggggggg2 = class extends (
+-  aaaaaaaa.bbbbbbbb.cccccccc.dddddddd.eeeeeeee.ffffffff.gggggggg1
+-) {
 +aaaaaaaa.bbbbbbbb.cccccccc.dddddddd.eeeeeeee
-+  .ffffffff.gggggggg2 = class extends (
-   aaaaaaaa.bbbbbbbb.cccccccc.dddddddd.eeeeeeee.ffffffff.gggggggg1
- ) {
++  .ffffffff.gggggggg2 = class extends aaaaaaaa.bbbbbbbb.cccccccc.dddddddd
++  .eeeeeeee.ffffffff.gggggggg1 {
    method() {
-@@ -12,17 +13,15 @@
+     console.log("foo");
+   }
+@@ -12,17 +12,15 @@
    }
  };
  
@@ -79,9 +82,8 @@ module.exports = class A extends B {
 
 ```js
 aaaaaaaa.bbbbbbbb.cccccccc.dddddddd.eeeeeeee
-  .ffffffff.gggggggg2 = class extends (
-  aaaaaaaa.bbbbbbbb.cccccccc.dddddddd.eeeeeeee.ffffffff.gggggggg1
-) {
+  .ffffffff.gggggggg2 = class extends aaaaaaaa.bbbbbbbb.cccccccc.dddddddd
+  .eeeeeeee.ffffffff.gggggggg1 {
   method() {
     console.log("foo");
   }

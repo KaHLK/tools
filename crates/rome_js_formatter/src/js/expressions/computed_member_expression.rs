@@ -1,8 +1,10 @@
 use crate::prelude::*;
 
+use crate::js::expressions::static_member_expression::memberish_needs_parens;
+use crate::parentheses::NeedsParentheses;
 use rome_formatter::{format_args, write};
-use rome_js_syntax::JsComputedMemberExpression;
-use rome_js_syntax::JsComputedMemberExpressionFields;
+use rome_js_syntax::{JsComputedMemberExpression, JsSyntaxNode};
+use rome_js_syntax::{JsComputedMemberExpressionFields, JsSyntaxKind};
 
 #[derive(Debug, Clone, Default)]
 pub struct FormatJsComputedMemberExpression;
@@ -34,5 +36,39 @@ impl FormatNodeRule<JsComputedMemberExpression> for FormatJsComputedMemberExpres
                 ]),
             ]
         ]
+    }
+
+    fn needs_parentheses(&self, item: &JsComputedMemberExpression) -> bool {
+        item.needs_parentheses()
+    }
+}
+
+impl NeedsParentheses for JsComputedMemberExpression {
+    fn needs_parentheses_with_parent(&self, parent: &JsSyntaxNode) -> bool {
+        if self.is_optional_chain() && matches!(parent.kind(), JsSyntaxKind::JS_NEW_EXPRESSION) {
+            return true;
+        }
+
+        memberish_needs_parens(self.clone().into(), parent)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::{assert_needs_parentheses, assert_not_needs_parentheses};
+    use rome_js_syntax::JsComputedMemberExpression;
+
+    #[test]
+    fn needs_parentheses() {
+        assert_needs_parentheses!("new (test()[a])()", JsComputedMemberExpression);
+        assert_needs_parentheses!("new (test().a[b])()", JsComputedMemberExpression);
+        assert_needs_parentheses!(
+            "new (test()`template`[index])()",
+            JsComputedMemberExpression
+        );
+        assert_needs_parentheses!("new (test()![member])()", JsComputedMemberExpression);
+
+        assert_not_needs_parentheses!("new (test[a])()", JsComputedMemberExpression);
     }
 }

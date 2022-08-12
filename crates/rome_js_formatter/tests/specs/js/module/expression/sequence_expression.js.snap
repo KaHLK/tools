@@ -47,13 +47,15 @@ Quote style: Double Quotes
 -----
 a, b;
 
-const f = () => (____________first,
-____________second,
-____________third,
-____________third,
-____________third,
-____________third,
-____________third);
+const f = () => (
+	____________first,
+	____________second,
+	____________third,
+	____________third,
+	____________third,
+	____________third,
+	____________third
+);
 
 ____________first,
 	____________second,
