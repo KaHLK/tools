@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use crate::js::expressions::static_member_expression::memberish_needs_parens;
+use crate::js::expressions::static_member_expression::member_chain_callee_needs_parens;
 use crate::parentheses::NeedsParentheses;
 use rome_formatter::{format_args, write};
 use rome_js_syntax::{JsComputedMemberExpression, JsSyntaxNode};
@@ -49,7 +49,7 @@ impl NeedsParentheses for JsComputedMemberExpression {
             return true;
         }
 
-        memberish_needs_parens(self.clone().into(), parent)
+        member_chain_callee_needs_parens(self.clone().into(), parent)
     }
 }
 
